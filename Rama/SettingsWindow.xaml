@@ -1,0 +1,181 @@
+<Window x:Class="Rama.SettingsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Rama Settings" 
+        Height="600" Width="500"
+        WindowStartupLocation="CenterOwner"
+        Background="#1E1E2E"
+        Foreground="#CDD6F4"
+        FontFamily="Segoe UI"
+        ResizeMode="NoResize"
+        WindowStyle="None"
+        AllowsTransparency="True">
+
+    <Border CornerRadius="12" Background="#1E1E2E" BorderBrush="#45475A" BorderThickness="1">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="46"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <!-- Title Bar -->
+            <Border Grid.Row="0" CornerRadius="12,12,0,0" Background="#11111B"
+                    BorderBrush="#45475A" BorderThickness="0,0,0,1"
+                    MouseLeftButtonDown="TitleBar_MouseDown">
+                <Grid>
+                    <TextBlock Text="⚙️  Rama Settings" FontSize="14" FontWeight="SemiBold"
+                               Foreground="#89B4FA" VerticalAlignment="Center" Margin="16,0"/>
+                    <Button Content="✕" Width="36" Height="30" FontSize="12"
+                            HorizontalAlignment="Right" Margin="0,0,8,0"
+                            Background="Transparent" Foreground="#F38BA8"
+                            Click="Close_Click" BorderThickness="0" Cursor="Hand"/>
+                </Grid>
+            </Border>
+
+            <!-- Settings Content -->
+            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Padding="16">
+                <StackPanel>
+                    
+                    <!-- 🔊 VOICE SECTION -->
+                    <TextBlock Text="🎙️ VOICE" FontSize="12" FontWeight="Bold" 
+                               Foreground="#89B4FA" Margin="0,0,0,8"/>
+                    <Border Background="#313244" CornerRadius="8" Padding="12" Margin="0,0,0,16">
+                        <StackPanel>
+                            <TextBlock Text="Speaking Language" FontSize="12" Foreground="#CDD6F4" Margin="0,0,0,6"/>
+                            <ComboBox x:Name="VoiceLanguageCombo" Background="#1E1E2E" Foreground="#CDD6F4"
+                                      BorderBrush="#45475A" Padding="8,4" Margin="0,0,0,12">
+                                <ComboBoxItem Content="🇬🇧  English" IsSelected="True"/>
+                                <ComboBoxItem Content="🇮🇳  Hindi (हिंदी)"/>
+                                <ComboBoxItem Content="🇮🇳  Marathi (मराठी)"/>
+                            </ComboBox>
+
+                            <TextBlock Text="Voice Speed" FontSize="12" Foreground="#CDD6F4" Margin="0,0,0,6"/>
+                            <Slider x:Name="VoiceSpeedSlider" Minimum="-5" Maximum="5" Value="1"
+                                    TickFrequency="1" IsSnapToTickEnabled="True"
+                                    Margin="0,0,0,12"/>
+
+                            <TextBlock Text="Voice Volume" FontSize="12" Foreground="#CDD6F4" Margin="0,0,0,6"/>
+                            <Slider x:Name="VoiceVolumeSlider" Minimum="0" Maximum="100" Value="85"
+                                    Margin="0,0,0,12"/>
+
+                            <CheckBox x:Name="AutoSpeakCheckBox" Content="  Auto-speak responses" 
+                                      Foreground="#CDD6F4" IsChecked="True" Margin="0,0,0,6"/>
+                            <CheckBox x:Name="WakeWordCheckBox" Content="  Enable wake word ('Hey Rama')" 
+                                      Foreground="#CDD6F4" IsChecked="True"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- 🌍 LANGUAGE SECTION -->
+                    <TextBlock Text="🌍 LANGUAGE" FontSize="12" FontWeight="Bold" 
+                               Foreground="#A6E3A1" Margin="0,0,0,8"/>
+                    <Border Background="#313244" CornerRadius="8" Padding="12" Margin="0,0,0,16">
+                        <StackPanel>
+                            <TextBlock Text="Interface Language" FontSize="12" Foreground="#CDD6F4" Margin="0,0,0,6"/>
+                            <ComboBox x:Name="InterfaceLangCombo" Background="#1E1E2E" Foreground="#CDD6F4"
+                                      BorderBrush="#45475A" Padding="8,4" Margin="0,0,0,12">
+                                <ComboBoxItem Content="🇬🇧  English" IsSelected="True"/>
+                                <ComboBoxItem Content="🇮🇳  Hindi (हिंदी)"/>
+                                <ComboBoxItem Content="🇮🇳  Marathi (मराठी)"/>
+                                <ComboBoxItem Content="🇪🇸  Spanish"/>
+                                <ComboBoxItem Content="🇫🇷  French"/>
+                                <ComboBoxItem Content="🇩🇪  German"/>
+                                <ComboBoxItem Content="🇨🇳  Chinese"/>
+                                <ComboBoxItem Content="🇯🇵  Japanese"/>
+                                <ComboBoxItem Content="🇰🇷  Korean"/>
+                                <ComboBoxItem Content="🇸🇦  Arabic"/>
+                                <ComboBoxItem Content="🇷🇺  Russian"/>
+                                <ComboBoxItem Content="🇧🇷  Portuguese"/>
+                            </ComboBox>
+
+                            <CheckBox x:Name="AutoDetectCheckBox" Content="  Auto-detect language from input" 
+                                      Foreground="#CDD6F4" IsChecked="True" Margin="0,0,0,6"/>
+                            <CheckBox x:Name="AmbientLearnCheckBox" Content="  Learn from surroundings (ambient)" 
+                                      Foreground="#CDD6F4" IsChecked="True" Margin="0,0,0,6"/>
+                            <CheckBox x:Name="HinglishCheckBox" Content="  Support Hinglish (Hindi+English mix)" 
+                                      Foreground="#CDD6F4" IsChecked="True"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- 😏 PERSONALITY SECTION -->
+                    <TextBlock Text="😏 PERSONALITY" FontSize="12" FontWeight="Bold" 
+                               Foreground="#F9E2AF" Margin="0,0,0,8"/>
+                    <Border Background="#313244" CornerRadius="8" Padding="12" Margin="0,0,0,16">
+                        <StackPanel>
+                            <TextBlock Text="Sass Level" FontSize="12" Foreground="#CDD6F4" Margin="0,0,0,6"/>
+                            <Slider x:Name="SassSlider" Minimum="0" Maximum="5" Value="3"
+                                    TickFrequency="1" IsSnapToTickEnabled="True"
+                                    Margin="0,0,0,12"/>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                                <TextBlock Text="😐 Polite" FontSize="10" Foreground="#A6ADC8"/>
+                                <TextBlock Text="                    " />
+                                <TextBlock Text="🔥 Maximum" FontSize="10" Foreground="#F38BA8"/>
+                            </StackPanel>
+
+                            <TextBlock Text="Humor Level" FontSize="12" Foreground="#CDD6F4" Margin="0,0,0,6"/>
+                            <Slider x:Name="HumorSlider" Minimum="0" Maximum="5" Value="3"
+                                    TickFrequency="1" IsSnapToTickEnabled="True"
+                                    Margin="0,0,0,12"/>
+
+                            <CheckBox x:Name="NaughtyCheckBox" Content="  Enable naughty mode 😏" 
+                                      Foreground="#CDD6F4" IsChecked="True" Margin="0,0,0,6"/>
+                            <CheckBox x:Name="SassyVoiceCheckBox" Content="  Sassy voice tone" 
+                                      Foreground="#CDD6F4" IsChecked="True"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- 🤖 AI SECTION -->
+                    <TextBlock Text="🤖 AI & LEARNING" FontSize="12" FontWeight="Bold" 
+                               Foreground="#CBA6F7" Margin="0,0,0,8"/>
+                    <Border Background="#313244" CornerRadius="8" Padding="12" Margin="0,0,0,16">
+                        <StackPanel>
+                            <CheckBox x:Name="LocalAICheckBox" Content="  Use Local AI (Ollama)" 
+                                      Foreground="#CDD6F4" IsChecked="False" Margin="0,0,0,6"/>
+                            <CheckBox x:Name="SelfLearningCheckBox" Content="  Self-learning from interactions" 
+                                      Foreground="#CDD6F4" IsChecked="True" Margin="0,0,0,6"/>
+                            <CheckBox x:Name="CriticalThinkingCheckBox" Content="  Critical thinking before actions" 
+                                      Foreground="#CDD6F4" IsChecked="True" Margin="0,0,0,6"/>
+                            <CheckBox x:Name="MistakeLearningCheckBox" Content="  Learn from mistakes" 
+                                      Foreground="#CDD6F4" IsChecked="True" Margin="0,0,0,6"/>
+                            <CheckBox x:Name="RememberContextCheckBox" Content="  Remember conversation context" 
+                                      Foreground="#CDD6F4" IsChecked="True"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- 🔧 SYSTEM SECTION -->
+                    <TextBlock Text="🔧 SYSTEM" FontSize="12" FontWeight="Bold" 
+                               Foreground="#89DCEB" Margin="0,0,0,8"/>
+                    <Border Background="#313244" CornerRadius="8" Padding="12" Margin="0,0,0,16">
+                        <StackPanel>
+                            <CheckBox x:Name="SystemTrayCheckBox" Content="  Minimize to system tray" 
+                                      Foreground="#CDD6F4" IsChecked="True" Margin="0,0,0,6"/>
+                            <CheckBox x:Name="StartupCheckBox" Content="  Start with Windows" 
+                                      Foreground="#CDD6F4" IsChecked="False" Margin="0,0,0,6"/>
+                            <CheckBox x:Name="NotificationsCheckBox" Content="  Show notifications" 
+                                      Foreground="#CDD6F4" IsChecked="True" Margin="0,0,0,6"/>
+                            <CheckBox x:Name="DarkModeCheckBox" Content="  Dark mode" 
+                                      Foreground="#CDD6F4" IsChecked="True"/>
+
+                            <Border Background="#1E1E2E" CornerRadius="6" Padding="10" Margin="0,12,0,0">
+                                <StackPanel>
+                                    <TextBlock Text="Data Location:" FontSize="10" Foreground="#A6ADC8"/>
+                                    <TextBlock x:Name="DataPathText" Text="%APPDATA%\Rama\" 
+                                               FontSize="10" Foreground="#89B4FA" TextWrapping="Wrap"/>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Buttons -->
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,0,0,16">
+                        <Button Content="Reset Defaults" Width="120" Height="32"
+                                Background="#45475A" Foreground="#CDD6F4" BorderThickness="0"
+                                Click="Reset_Click" Margin="0,0,8,0" Cursor="Hand"/>
+                        <Button Content="💾 Save" Width="100" Height="32"
+                                Background="#89B4FA" Foreground="#1E1E2E" BorderThickness="0"
+                                Click="Save_Click" FontWeight="Bold" Cursor="Hand"/>
+                    </StackPanel>
+                </StackPanel>
+            </ScrollViewer>
+        </Grid>
+    </Border>
+</Window>
