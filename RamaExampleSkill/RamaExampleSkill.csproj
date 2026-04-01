@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>RamaJokeSkill</AssemblyName>
+    <RootNamespace>RamaJokeSkill</RootNamespace>
+  </PropertyGroup>
+
+  <!-- 
+    Reference the Rama project to get access to ISkill and Memory interfaces.
+    In a real deployment, you'd reference the published Rama.dll instead.
+  -->
+  <ItemGroup>
+    <ProjectReference Include="..\Rama\Rama.csproj" />
+  </ItemGroup>
+
+</Project>
