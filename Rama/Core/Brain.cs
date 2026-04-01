@@ -16,6 +16,7 @@ namespace Rama.Core
         private readonly SkillManager _skillManager;
         private readonly Learner _learner;
         private readonly Memory _memory;
+        private readonly LanguageManager _language;
         private readonly Random _rand = new();
         private int _sassLevel = 3; // 1-5, controls how spicy responses get
 
@@ -24,7 +25,10 @@ namespace Rama.Core
             _skillManager = skillManager;
             _learner = learner;
             _memory = memory;
+            _language = new LanguageManager();
         }
+
+        public LanguageManager Language => _language;
 
         /// <summary>
         /// Process user input and return a response.
@@ -59,6 +63,16 @@ namespace Rama.Core
                 // Handle sass commands
                 if (trimmed.ToLowerInvariant().StartsWith("set sass"))
                     return HandleSassCommand(trimmed);
+
+                // Handle language commands
+                if (trimmed.ToLowerInvariant().StartsWith("set language") || 
+                    trimmed.ToLowerInvariant().StartsWith("switch to") ||
+                    trimmed.ToLowerInvariant().StartsWith("speak in") ||
+                    trimmed.ToLowerInvariant().StartsWith("change language"))
+                    return HandleLanguageCommand(trimmed);
+
+                if (trimmed.ToLowerInvariant() == "show languages" || trimmed.ToLowerInvariant() == "list languages")
+                    return ListLanguages();
 
                 // Step 1: Check learned patterns
                 var learnedSkill = _learner.GetBestLearnedSkill(trimmed);
@@ -223,6 +237,62 @@ namespace Rama.Core
                 return "Sass disabled. Boring mode engaged. 😐";
             }
             return "Try: 'set sass max', 'set sass high', 'set sass medium', 'set sass low', or 'set sass off'";
+        }
+
+        private string HandleLanguageCommand(string input)
+        {
+            string lower = input.ToLowerInvariant();
+            string lang = "";
+
+            // Extract language from various command formats
+            if (lower.Contains("set language"))
+                lang = ExtractAfterCommand(input, "set language");
+            else if (lower.Contains("switch to"))
+                lang = ExtractAfterCommand(input, "switch to");
+            else if (lower.Contains("speak in"))
+                lang = ExtractAfterCommand(input, "speak in");
+            else if (lower.Contains("change language"))
+                lang = ExtractAfterCommand(input, "change language");
+
+            if (string.IsNullOrWhiteSpace(lang))
+                return "Which language? Say `set language [language]` or `show languages` to see options.";
+
+            bool success = _language.SetLanguage(lang);
+            if (success)
+            {
+                return $"🌍 Language set to **{_language.CurrentLanguageName}**! " +
+                       $"Some responses will now be in {_language.CurrentLanguageName}. " +
+                       "Skills still work in all languages!";
+            }
+
+            return $"I don't have translations for '{lang}' yet, but I still understand commands in any language! " +
+                   "Say `show languages` to see what's available.";
+        }
+
+        private string ListLanguages()
+        {
+            var langs = _language.GetSupportedLanguages();
+            var sb = new System.Text.StringBuilder();
+            sb.AppendLine("🌍 **Supported Languages:**\n");
+            sb.AppendLine($"Currently: **{_language.CurrentLanguageName}**\n");
+
+            foreach (var (code, name) in langs)
+            {
+                string marker = code == _language.CurrentLanguage ? " ← current" : "";
+                sb.AppendLine($"  • **{name}** (`{code}`){marker}");
+            }
+
+            sb.AppendLine("\nSay `set language [name]` to switch. Example: `set language hindi`");
+            sb.AppendLine("\n💡 **Note:** I understand commands in ANY language regardless of setting!");
+            return sb.ToString();
+        }
+
+        private string ExtractAfterCommand(string input, string command)
+        {
+            string lower = input.ToLowerInvariant();
+            int idx = lower.IndexOf(command.ToLowerInvariant());
+            if (idx < 0) return "";
+            return input.Substring(idx + command.Length).Trim();
         }
 
         private string GetSassyResponse(string input)
