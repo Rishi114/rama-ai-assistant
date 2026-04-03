@@ -1,0 +1,14 @@
+MiroFish
+agentic-context-engine
+agentjson
+awesome-vibe-coding
+claude-code-architecture
+claude-reflect
+claw-code
+easy-vibe
+everything-claude-code
+godmode3
+minGPT
+rama-3d
+second-brain
+vibe-coding-prompt-template

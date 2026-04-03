@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rama 3D - AI Assistant</title>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Rajdhani:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      overflow: hidden;
+      background: #0a0a1a;
+      font-family: 'Rajdhani', sans-serif;
+      color: #fff;
+    }
+
+    #canvas-container {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 1;
+    }
+
+    /* Scanline overlay */
+    .scanlines {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 2;
+      background: repeating-linear-gradient(
+        0deg,
+        rgba(0, 0, 0, 0.03) 0px,
+        rgba(0, 0, 0, 0.03) 1px,
+        transparent 1px,
+        transparent 2px
+      );
+    }
+
+    /* UI Overlay */
+    .ui-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    /* Status indicator - top left */
+    .status {
+      position: absolute;
+      top: 30px;
+      left: 30px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .status-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #00f5ff;
+      box-shadow: 0 0 20px #00f5ff, 0 0 40px #00f5ff;
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    .status-dot.listening {
+      background: #00ff88;
+      box-shadow: 0 0 20px #00ff88, 0 0 40px #00ff88;
+    }
+
+    .status-dot.thinking {
+      background: #ffaa00;
+      box-shadow: 0 0 20px #ffaa00, 0 0 40px #ffaa00;
+      animation: pulse 0.5s ease-in-out infinite;
+    }
+
+    .status-dot.speaking {
+      background: #ff00ff;
+      box-shadow: 0 0 20px #ff00ff, 0 0 40px #ff00ff;
+      animation: pulse 0.3s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.7; transform: scale(1.2); }
+    }
+
+    .status-text {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 3px;
+      color: #00f5ff;
+      text-shadow: 0 0 10px #00f5ff;
+    }
+
+    /* Chat display - center */
+    .chat-display {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -30%);
+      width: 600px;
+      max-width: 90%;
+      text-align: center;
+    }
+
+    .user-text {
+      font-size: 24px;
+      font-weight: 600;
+      color: #4d9fff;
+      margin-bottom: 20px;
+      opacity: 0;
+      transition: opacity 0.5s ease;
+    }
+
+    .user-text.visible {
+      opacity: 1;
+    }
+
+    .response-text {
+      font-size: 28px;
+      font-weight: 500;
+      color: #fff;
+      line-height: 1.4;
+      text-shadow: 0 0 20px rgba(0, 245, 255, 0.5);
+      opacity: 0;
+      transition: opacity 0.5s ease;
+    }
+
+    .response-text.visible {
+      opacity: 1;
+    }
+
+    /* Bottom prompt */
+    .prompt {
+      position: absolute;
+      bottom: 40px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 16px;
+      color: rgba(255, 255, 255, 0.5);
+      letter-spacing: 2px;
+    }
+
+    /* Window controls - top right */
+    .window-controls {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      display: flex;
+      gap: 10px;
+      pointer-events: auto;
+    }
+
+    .control-btn {
+      width: 40px;
+      height: 40px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      background: rgba(26, 26, 46, 0.8);
+      border-radius: 8px;
+      color: #fff;
+      font-size: 16px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .control-btn:hover {
+      background: rgba(77, 159, 255, 0.3);
+      border-color: #4d9fff;
+      box-shadow: 0 0 15px rgba(77, 159, 255, 0.5);
+    }
+
+    .control-btn.close:hover {
+      background: rgba(255, 71, 87, 0.3);
+      border-color: #ff4757;
+    }
+
+    /* Voice indicator */
+    .voice-indicator {
+      position: absolute;
+      bottom: 100px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 5px;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+
+    .voice-indicator.active {
+      opacity: 1;
+    }
+
+    .voice-bar {
+      width: 4px;
+      height: 30px;
+      background: #00f5ff;
+      border-radius: 2px;
+      animation: voiceWave 0.5s ease-in-out infinite;
+    }
+
+    .voice-bar:nth-child(2) { animation-delay: 0.1s; }
+    .voice-bar:nth-child(3) { animation-delay: 0.2s; }
+    .voice-bar:nth-child(4) { animation-delay: 0.3s; }
+    .voice-bar:nth-child(5) { animation-delay: 0.4s; }
+
+    @keyframes voiceWave {
+      0%, 100% { transform: scaleY(0.3); }
+      50% { transform: scaleY(1); }
+    }
+  </style>
+</head>
+<body>
+  <div id="canvas-container"></div>
+  <div class="scanlines"></div>
+  
+  <div class="ui-overlay">
+    <!-- Status -->
+    <div class="status">
+      <div class="status-dot" id="statusDot"></div>
+      <span class="status-text" id="statusText">LISTENING</span>
+    </div>
+
+    <!-- Window Controls -->
+    <div class="window-controls">
+      <button class="control-btn" onclick="window.electronAPI?.minimize()">─</button>
+      <button class="control-btn" onclick="window.electronAPI?.maximize()">□</button>
+      <button class="control-btn close" onclick="window.electronAPI?.close()">✕</button>
+    </div>
+
+    <!-- Chat Display -->
+    <div class="chat-display">
+      <div class="user-text" id="userText"></div>
+      <div class="response-text" id="responseText"></div>
+    </div>
+
+    <!-- Voice Indicator -->
+    <div class="voice-indicator" id="voiceIndicator">
+      <div class="voice-bar"></div>
+      <div class="voice-bar"></div>
+      <div class="voice-bar"></div>
+      <div class="voice-bar"></div>
+      <div class="voice-bar"></div>
+    </div>
+
+    <!-- Prompt -->
+    <div class="prompt" id="prompt">Speak naturally...</div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script>
+    // =====================
+    // THREE.JS 3D AVATAR
+    // =====================
+    
+    const container = document.getElementById('canvas-container');
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    container.appendChild(renderer.domElement);
+
+    // Background gradient
+    const bgCanvas = document.createElement('canvas');
+    bgCanvas.width = 512;
+    bgCanvas.height = 512;
+    const bgCtx = bgCanvas.getContext('2d');
+    const gradient = bgCtx.createRadialGradient(256, 256, 0, 256, 256, 400);
+    gradient.addColorStop(0, '#1a1a3a');
+    gradient.addColorStop(1, '#0a0a1a');
+    bgCtx.fillStyle = gradient;
+    bgCtx.fillRect(0, 0, 512, 512);
+    const bgTexture = new THREE.CanvasTexture(bgCanvas);
+    scene.background = bgTexture;
+
+    // Camera position
+    camera.position.z = 5;
+
+    // Lighting
+    const ambientLight = new THREE.AmbientLight(0x404040, 0.5);
+    scene.add(ambientLight);
+
+    const pointLight1 = new THREE.PointLight(0x00f5ff, 1, 100);
+    pointLight1.position.set(5, 5, 5);
+    scene.add(pointLight1);
+
+    const pointLight2 = new THREE.PointLight(0x4d9fff, 0.8, 100);
+    pointLight2.position.set(-5, -5, 5);
+    scene.add(pointLight2);
+
+    // =====================
+    // CREATE AVATAR
+    // =====================
+    
+    const avatarGroup = new THREE.Group();
+
+    // Avatar material - holographic glass
+    const avatarMaterial = new THREE.MeshPhysicalMaterial({
+      color: 0x00f5ff,
+      metalness: 0.1,
+      roughness: 0.1,
+      transmission: 0.9,
+      thickness: 0.5,
+      transparent: true,
+      opacity: 0.8,
+      emissive: 0x00f5ff,
+      emissiveIntensity: 0.2
+    });
+
+    // Inner glow material
+    const innerMaterial = new THREE.MeshBasicMaterial({
+      color: 0x00f5ff,
+      transparent: true,
+      opacity: 0.5
+    });
+
+    // Head - Icosahedron for geometric look
+    const headGeom = new THREE.IcosahedronGeometry(0.5, 1);
+    const head = new THREE.Mesh(headGeom, avatarMaterial);
+    head.position.y = 1.2;
+    avatarGroup.add(head);
+
+    // Inner head glow
+    const innerHeadGeom = new THREE.IcosahedronGeometry(0.4, 0);
+    const innerHead = new THREE.Mesh(innerHeadGeom, innerMaterial);
+    innerHead.position.y = 1.2;
+    avatarGroup.add(innerHead);
+
+    // Body - Torus knot for abstract form
+    const bodyGeom = new THREE.TorusKnotGeometry(0.4, 0.15, 64, 8);
+    const body = new THREE.Mesh(bodyGeom, avatarMaterial);
+    body.position.y = 0.3;
+    avatarGroup.add(body);
+
+    // Inner body
+    const innerBodyGeom = new THREE.TorusKnotGeometry(0.3, 0.1, 32, 8);
+    const innerBody = new THREE.Mesh(innerBodyGeom, innerMaterial);
+    innerBody.position.y = 0.3;
+    avatarGroup.add(innerBody);
+
+    // Base ring
+    const ringGeom = new THREE.TorusGeometry(0.8, 0.05, 16, 100);
+    const ring = new THREE.Mesh(ringGeom, avatarMaterial);
+    ring.rotation.x = Math.PI / 2;
+    ring.position.y = -0.5;
+    avatarGroup.add(ring);
+
+    // Orbiting particles
+    const particleCount = 50;
+    const particleGeom = new THREE.BufferGeometry();
+    const particlePositions = new Float32Array(particleCount * 3);
+    
+    for (let i = 0; i < particleCount; i++) {
+      const angle = (i / particleCount) * Math.PI * 2;
+      const radius = 1.5 + Math.random() * 0.5;
+      particlePositions[i * 3] = Math.cos(angle) * radius;
+      particlePositions[i * 3 + 1] = (Math.random() - 0.5) * 2;
+      particlePositions[i * 3 + 2] = Math.sin(angle) * radius;
+    }
+    
+    particleGeom.setAttribute('position', new THREE.BufferAttribute(particlePositions, 3));
+    const particleMat = new THREE.PointsMaterial({
+      color: 0x00f5ff,
+      size: 0.05,
+      transparent: true,
+      opacity: 0.6
+    });
+    const particles = new THREE.Points(particleGeom, particleMat);
+    avatarGroup.add(particles);
+
+    scene.add(avatarGroup);
+
+    // =====================
+    // AVATAR STATES
+    // =====================
+    
+    let avatarState = 'idle';
+    let stateTime = 0;
+
+    function setAvatarState(state) {
+      avatarState = state;
+      stateTime = 0;
+      
+      const statusDot = document.getElementById('statusDot');
+      const statusText = document.getElementById('statusText');
+      
+      statusDot.className = 'status-dot ' + state;
+      statusText.textContent = state.toUpperCase();
+      
+      // Update materials based on state
+      if (state === 'listening') {
+        avatarMaterial.emissive.setHex(0x00ff88);
+        innerMaterial.color.setHex(0x00ff88);
+      } else if (state === 'thinking') {
+        avatarMaterial.emissive.setHex(0xffaa00);
+        innerMaterial.color.setHex(0xffaa00);
+      } else if (state === 'speaking') {
+        avatarMaterial.emissive.setHex(0xff00ff);
+        innerMaterial.color.setHex(0xff00ff);
+      } else {
+        avatarMaterial.emissive.setHex(0x00f5ff);
+        innerMaterial.color.setHex(0x00f5ff);
+      }
+    }
+
+    // =====================
+    // PARTICLES BACKGROUND
+    // =====================
+    
+    const bgParticlesGeom = new THREE.BufferGeometry();
+    const bgParticleCount = 200;
+    const bgPositions = new Float32Array(bgParticleCount * 3);
+    
+    for (let i = 0; i < bgParticleCount; i++) {
+      bgPositions[i * 3] = (Math.random() - 0.5) * 20;
+      bgPositions[i * 3 + 1] = (Math.random() - 0.5) * 20;
+      bgPositions[i * 3 + 2] = (Math.random() - 0.5) * 20;
+    }
+    
+    bgParticlesGeom.setAttribute('position', new THREE.BufferAttribute(bgPositions, 3));
+    const bgParticlesMat = new THREE.PointsMaterial({
+      color: 0x4d9fff,
+      size: 0.02,
+      transparent: true,
+      opacity: 0.4
+    });
+    const bgParticles = new THREE.Points(bgParticlesGeom, bgParticlesMat);
+    scene.add(bgParticles);
+
+    // =====================
+    // ANIMATION LOOP
+    // =====================
+    
+    let time = 0;
+    
+    function animate() {
+      requestAnimationFrame(animate);
+      time += 0.016;
+      stateTime += 0.016;
+      
+      // Avatar animations based on state
+      if (avatarState === 'idle') {
+        // Gentle floating
+        avatarGroup.position.y = Math.sin(time * 0.5) * 0.1;
+        avatarGroup.rotation.y = Math.sin(time * 0.3) * 0.1;
+      } else if (avatarState === 'listening') {
+        // Focused, slightly forward
+        avatarGroup.position.y = Math.sin(time * 2) * 0.02;
+        avatarGroup.rotation.x = 0.1;
+      } else if (avatarState === 'thinking') {
+        // Rotating/searching
+        avatarGroup.rotation.y += 0.02;
+        avatarGroup.position.y = Math.sin(time * 1.5) * 0.15;
+      } else if (avatarState === 'speaking') {
+        // Expressive movement
+        avatarGroup.position.y = Math.sin(time * 4) * 0.1;
+        avatarGroup.rotation.z = Math.sin(time * 3) * 0.1;
+      }
+      
+      // Rotate particles
+      particles.rotation.y += 0.005;
+      particles.rotation.x += 0.002;
+      
+      // Background particles drift
+      bgParticles.rotation.y += 0.0005;
+      
+      // Light animation
+      pointLight1.intensity = 1 + Math.sin(time * 2) * 0.3;
+      
+      renderer.render(scene, camera);
+    }
+    
+    animate();
+
+    // Resize handler
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    // =====================
+    // VOICE RECOGNITION
+    // =====================
+    
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    let recognition;
+    let isListening = true;
+
+    const userTextEl = document.getElementById('userText');
+    const responseTextEl = document.getElementById('responseText');
+    const voiceIndicator = document.getElementById('voiceIndicator');
+    const prompt = document.getElementById('prompt');
+
+    if (SpeechRecognition) {
+      recognition = new SpeechRecognition();
+      recognition.continuous = true;
+      recognition.interimResults = true;
+      recognition.lang = 'en-US';
+
+      recognition.onstart = () => {
+        setAvatarState('listening');
+        voiceIndicator.classList.add('active');
+      };
+
+      recognition.onresult = (event) => {
+        const transcript = Array.from(event.results)
+          .map(result => result[0].transcript)
+          .join('');
+        
+        userTextEl.textContent = transcript;
+        userTextEl.classList.add('visible');
+        
+        if (event.results[0].isFinal) {
+          processVoiceInput(transcript);
+        }
+      };
+
+      recognition.onend = () => {
+        if (isListening) {
+          // Restart recognition for continuous listening
+          setTimeout(() => {
+            try {
+              recognition.start();
+            } catch (e) {}
+          }, 100);
+        }
+      };
+
+      recognition.onerror = (event) => {
+        console.log('Speech recognition error:', event.error);
+      };
+
+      // Start listening
+      try {
+        recognition.start();
+      } catch (e) {
+        console.log('Could not start recognition');
+      }
+    } else {
+      prompt.textContent = 'Speech API not supported';
+    }
+
+    // =====================
+    // PROCESS VOICE INPUT
+    // =====================
+    
+    async function processVoiceInput(text) {
+      if (!text.trim()) return;
+      
+      setAvatarState('thinking');
+      voiceIndicator.classList.remove('active');
+      prompt.textContent = 'Processing...';
+      
+      // Call Rama brain (API or offline)
+      const response = await callRamaBrain(text);
+      
+      // Display and speak response
+      setAvatarState('speaking');
+      responseTextEl.textContent = response;
+      responseTextEl.classList.add('visible');
+      
+      // TTS
+      speak(response);
+      
+      // After speaking, return to listening
+      setTimeout(() => {
+        setAvatarState('listening');
+        responseTextEl.classList.remove('visible');
+        userTextEl.classList.remove('visible');
+        userTextEl.textContent = '';
+        prompt.textContent = 'Speak naturally...';
+        voiceIndicator.classList.add('active');
+      }, response.length * 80 + 2000);
+    }
+
+    // Rama Brain API integration
+    // Connects to http://localhost:5000/brain
+    
+    const API_BASE = 'http://localhost:5000';
+    let apiAvailable = false;
+    
+    // Check API availability on load
+    async function checkApi() {
+      try {
+        const res = await fetch(`${API_BASE}/status`, { 
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          console.log('[Rama 3D] Connected to Rama Brain:', data);
+          apiAvailable = true;
+          document.getElementById('statusText').textContent = 'CONNECTED';
+        }
+      } catch (e) {
+        console.log('[Rama 3D] API not available, using offline mode');
+        apiAvailable = false;
+      }
+    }
+    checkApi();
+    
+    async function callRamaBrain(input) {
+      if (apiAvailable) {
+        try {
+          const res = await fetch(`${API_BASE}/brain`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message: input })
+          });
+          if (res.ok) {
+            const data = await res.json();
+            return data.response;
+          }
+        } catch (e) {
+          console.log('[Rama 3D] API call failed, using offline mode');
+        }
+      }
+      
+      // Fallback to offline responses
+      return offlineResponse(input);
+    }
+    
+    // Offline responses when API unavailable
+    function offlineResponse(input) {
+      const responses = [
+        "I'm listening. What would you like to know?",
+        "Interesting question! Let me think about that.",
+        "I understand. Here's what I think...",
+        "That's a great point. Here's my perspective.",
+        "Got it! Here's what I can tell you.",
+        "I'm here and ready to help. What do you need?",
+        "Absolutely! Let me break that down for you."
+      ];
+      
+      const lower = input.toLowerCase();
+      if (lower.includes('hello') || lower.includes('hi')) {
+        return "Hey there! 👋 I'm Rama, your AI assistant. What's on your mind?";
+      }
+      if (lower.includes('who are you') || lower.includes('what are you')) {
+        return "I'm Rama - a self-learning AI assistant. I can learn and improve from our conversations!";
+      }
+      if (lower.includes('help')) {
+        return "I'm here to help! I can answer questions, have conversations, and learn from you. What do you need?";
+      }
+      
+      return responses[Math.floor(Math.random() * responses.length)];
+    }
+
+    // =====================
+    // TEXT TO SPEECH
+    // =====================
+    
+    function speak(text) {
+      if ('speechSynthesis' in window) {
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.rate = 1;
+        utterance.pitch = 1;
+        utterance.volume = 1;
+        
+        // Select a good voice
+        const voices = speechSynthesis.getVoices();
+        const englishVoice = voices.find(v => v.lang.startsWith('en') && v.name.includes('Google')) 
+                          || voices.find(v => v.lang.startsWith('en'));
+        if (englishVoice) {
+          utterance.voice = englishVoice;
+        }
+        
+        utterance.onend = () => {
+          // Speaking complete
+        };
+        
+        speechSynthesis.speak(utterance);
+      }
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,297 @@
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using Rama.Core;
+
+namespace Rama.Skills
+{
+    /// <summary>
+    /// Skill Creator — Lets users create new skills from conversation or a template.
+    /// Can generate skill code, compile DLLs, and load them at runtime.
+    /// </summary>
+    public class SkillCreatorSkill : SkillBase
+    {
+        private string SkillsDir => Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+            "Rama", "Skills");
+
+        private string TemplatesDir => Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+            "Rama", "Templates");
+
+        public override string Name => "Skill Creator";
+        public override string Description => "Create, install, and manage custom skills";
+        public override string[] Triggers => new[] { 
+            "create skill", "add skill", "new skill", "make skill", 
+            "build skill", "list my skills", "remove skill", "delete skill",
+            "show my skills", "my skills", "skill template", "help me create"
+        };
+
+        public override bool CanHandle(string input)
+        {
+            string lower = input.ToLowerInvariant();
+            return lower.Contains("create skill") || lower.Contains("add skill") ||
+                   lower.Contains("new skill") || lower.Contains("make skill") ||
+                   lower.Contains("build skill") || lower.Contains("my skills") ||
+                   lower.Contains("list my skills") || lower.Contains("remove skill") ||
+                   lower.Contains("delete skill") || lower.Contains("skill template") ||
+                   lower.Contains("help me create");
+        }
+
+        public override Task<string> ExecuteAsync(string input, Memory memory)
+        {
+            string lower = input.ToLowerInvariant();
+
+            if (lower.Contains("list my skills") || lower.Contains("my skills") || lower.Contains("show my skills"))
+                return ListCustomSkills();
+
+            if (lower.Contains("remove skill") || lower.Contains("delete skill"))
+                return RemoveSkill(input);
+
+            if (lower.Contains("skill template") || lower.Contains("help me create"))
+                return ShowTemplate();
+
+            return CreateSkill(input);
+        }
+
+        private async Task<string> CreateSkill(string input)
+        {
+            // Parse: "create skill [name] that [does something]"
+            string description = ExtractDescription(input);
+            string skillName = ExtractSkillName(input);
+
+            if (string.IsNullOrEmpty(skillName))
+                return "🛠️ **How to create a skill:**\n\n" +
+                    "Tell me what you want! Examples:\n" +
+                    "• `create skill JokeTeller that tells jokes`\n" +
+                    "• `add skill Translator that translates text`\n" +
+                    "• `new skill TodoList that manages a todo list`\n\n" +
+                    "Or say **skill template** to get a code template you can edit.";
+
+            // Generate skill code
+            string code = GenerateSkillCode(skillName, description);
+            string safeName = SanitizeName(skillName);
+            string filePath = Path.Combine(SkillsDir, $"{safeName}.cs");
+
+            // Ensure directory exists
+            Directory.CreateDirectory(SkillsDir);
+
+            // Write the file
+            File.WriteAllText(filePath, code);
+
+            return $"✨ **Skill Created: {skillName}!**\n\n" +
+                $"📄 File: `{filePath}`\n" +
+                $"📝 Description: {description}\n\n" +
+                $"**To activate it:**\n" +
+                $"1. Open the file to customize it\n" +
+                $"2. Build the project: `dotnet build`\n" +
+                $"3. Restart Rama\n\n" +
+                $"Or for external DLL skills, build it separately and drop the DLL in:\n`{SkillsDir}`\n\n" +
+                $"The skill code has been generated with your description. Edit the `ExecuteAsync` method to add your logic! 🚀";
+        }
+
+        private string GenerateSkillCode(string name, string description)
+        {
+            string safeName = SanitizeName(name);
+            string className = safeName + "Skill";
+            string[] triggers = GenerateTriggers(name, description);
+
+            var sb = new StringBuilder();
+            sb.AppendLine("using System;");
+            sb.AppendLine("using System.Threading.Tasks;");
+            sb.AppendLine("using Rama.Core;");
+            sb.AppendLine();
+            sb.AppendLine("namespace Rama.Skills");
+            sb.AppendLine("{");
+            sb.AppendLine($"    /// <summary>");
+            sb.AppendLine($"    /// {description}");
+            sb.AppendLine($"    /// Auto-generated by Rama Skill Creator");
+            sb.AppendLine($"    /// </summary>");
+            sb.AppendLine($"    public class {className} : SkillBase");
+            sb.AppendLine("    {");
+            sb.AppendLine($"        public override string Name => \"{name}\";");
+            sb.AppendLine($"        public override string Description => \"{description}\";");
+            sb.Append($"        public override string[] Triggers => new[] {{ ");
+            sb.Append(string.Join(", ", triggers.Select(t => $"\"{t}\"")));
+            sb.AppendLine(" };");
+            sb.AppendLine();
+            sb.AppendLine("        public override bool CanHandle(string input)");
+            sb.AppendLine("        {");
+            sb.AppendLine("            string lower = input.ToLowerInvariant();");
+            sb.Append("            return ");
+            var conditions = triggers.Select(t => $"lower.Contains(\"{t.ToLowerInvariant()}\")");
+            sb.AppendLine(string.Join(" || ", conditions) + ";");
+            sb.AppendLine("        }");
+            sb.AppendLine();
+            sb.AppendLine("        public override Task<string> ExecuteAsync(string input, Memory memory)");
+            sb.AppendLine("        {");
+            sb.AppendLine("            // TODO: Add your skill logic here!");
+            sb.AppendLine("            // Use 'input' for the user's message");
+            sb.AppendLine("            // Use 'memory' to store/retrieve facts");
+            sb.AppendLine("            // Return a string response");
+            sb.AppendLine();
+            sb.AppendLine($"            string command = ExtractCommand(input);");
+            sb.AppendLine();
+            sb.AppendLine("            if (string.IsNullOrWhiteSpace(command))");
+            sb.AppendLine($"                return Task.FromResult(\"I can help with {name.ToLower()}! Tell me what you need.\");");
+            sb.AppendLine();
+            sb.AppendLine("            // YOUR LOGIC HERE:");
+            sb.AppendLine($"            return Task.FromResult($\"🔧 {name} received: {{command}} — customize this skill!\");");
+            sb.AppendLine("        }");
+            sb.AppendLine("    }");
+            sb.AppendLine("}");
+
+            return sb.ToString();
+        }
+
+        private string[] GenerateTriggers(string name, string description)
+        {
+            var triggers = new List<string> { name.ToLower() };
+
+            // Add description words as potential triggers
+            var words = description.ToLower().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            foreach (var word in words.Take(3))
+            {
+                if (word.Length > 3 && !triggers.Contains(word))
+                    triggers.Add(word);
+            }
+
+            // Add common action prefixes
+            if (!triggers.Any(t => t.Contains("do ")))
+                triggers.Add("do " + name.ToLower());
+
+            return triggers.ToArray();
+        }
+
+        private string ExtractSkillName(string input)
+        {
+            var match = System.Text.RegularExpressions.Regex.Match(input,
+                @"(?:create|add|new|make|build)\s+skill\s+(\w+)",
+                System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
+            return match.Success ? match.Groups[1].Value : "";
+        }
+
+        private string ExtractDescription(string input)
+        {
+            var match = System.Text.RegularExpressions.Regex.Match(input,
+                @"(?:that|who|which)\s+(.+)",
+                System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
+            if (match.Success)
+                return match.Groups[1].Value.Trim().TrimEnd('.');
+
+            // Fallback: use the skill name
+            string name = ExtractSkillName(input);
+            return string.IsNullOrEmpty(name) ? "A custom skill" : $"Custom skill for {name}";
+        }
+
+        private string SanitizeName(string name)
+        {
+            var clean = new StringBuilder();
+            foreach (char c in name)
+            {
+                if (char.IsLetterOrDigit(c))
+                    clean.Append(c);
+            }
+            string result = clean.ToString();
+            if (result.Length > 0)
+                result = char.ToUpper(result[0]) + result.Substring(1);
+            return result;
+        }
+
+        private Task<string> ListCustomSkills()
+        {
+            if (!Directory.Exists(SkillsDir))
+                return Task.FromResult("📂 No custom skills yet! Say `create skill [name] that [does something]` to make one.");
+
+            var files = Directory.GetFiles(SkillsDir, "*.cs")
+                .Concat(Directory.GetFiles(SkillsDir, "*.dll"))
+                .ToList();
+
+            if (!files.Any())
+                return Task.FromResult("📂 No custom skills yet! Say `create skill [name] that [does something]` to make one.");
+
+            var result = "📂 **Your Custom Skills:**\n\n";
+            foreach (var file in files)
+            {
+                string name = Path.GetFileNameWithoutExtension(file);
+                string ext = Path.GetExtension(file);
+                string type = ext == ".dll" ? "🔌 DLL" : "📝 Source";
+                result += $"  {type} **{name}**\n";
+            }
+
+            result += $"\n📁 Location: `{SkillsDir}`";
+            return Task.FromResult(result);
+        }
+
+        private Task<string> RemoveSkill(string input)
+        {
+            string name = System.Text.RegularExpressions.Regex.Replace(input,
+                @"remove skill\s+|delete skill\s+", "",
+                System.Text.RegularExpressions.RegexOptions.IgnoreCase).Trim();
+
+            if (string.IsNullOrEmpty(name))
+                return Task.FromResult("Which skill? Say `remove skill [name]`");
+
+            string csFile = Path.Combine(SkillsDir, $"{SanitizeName(name)}.cs");
+            string dllFile = Path.Combine(SkillsDir, $"{SanitizeName(name)}.dll");
+
+            if (File.Exists(csFile))
+            {
+                File.Delete(csFile);
+                return Task.FromResult($"✅ Removed skill: {name} (source file deleted)");
+            }
+            if (File.Exists(dllFile))
+            {
+                File.Delete(dllFile);
+                return Task.FromResult($"✅ Removed skill: {name} (DLL deleted)");
+            }
+
+            return Task.FromResult($"❌ Couldn't find a skill called '{name}' in {SkillsDir}");
+        }
+
+        private Task<string> ShowTemplate()
+        {
+            return Task.FromResult(
+                "📝 **Skill Template (copy and customize):**\n\n" +
+                "```csharp\n" +
+                "using System;\n" +
+                "using System.Threading.Tasks;\n" +
+                "using Rama.Core;\n\n" +
+                "namespace Rama.Skills\n" +
+                "{\n" +
+                "    public class MySkill : SkillBase\n" +
+                "    {\n" +
+                "        public override string Name => \"My Skill\";\n" +
+                "        public override string Description => \"Does something cool\";\n" +
+                "        public override string[] Triggers => new[] { \"my trigger\" };\n\n" +
+                "        public override bool CanHandle(string input)\n" +
+                "        {\n" +
+                "            return input.ToLowerInvariant().Contains(\"my trigger\");\n" +
+                "        }\n\n" +
+                "        public override Task<string> ExecuteAsync(string input, Memory memory)\n" +
+                "        {\n" +
+                "            string command = ExtractCommand(input);\n" +
+                "            // Your logic here!\n" +
+                "            return Task.FromResult($\"Result: {command}\");\n" +
+                "        }\n" +
+                "    }\n" +
+                "}\n" +
+                "```\n\n" +
+                $"Save as `.cs` in: `{SkillsDir}`\n" +
+                "Or build as DLL and drop it there. Restart Rama to load!"
+            );
+        }
+
+        public override void OnLoad()
+        {
+            Directory.CreateDirectory(SkillsDir);
+            Directory.CreateDirectory(TemplatesDir);
+        }
+    }
+}

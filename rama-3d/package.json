@@ -1,0 +1,16 @@
+{
+  "name": "rama-3d",
+  "version": "1.0.0",
+  "description": "Rama 3D - Continuous Voice AI Assistant",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron ."
+  },
+  "author": "Rama",
+  "license": "MIT",
+  "dependencies": {
+    "electron": "^28.0.0",
+    "three": "^0.160.0"
+  }
+}
